@@ -65,5 +65,3 @@ Ensure that the header is labeled "privateKey" and each subsequent row contains 
     - After the process is completed, you can check the results in the `output` directory. A CSV file will be generated for both the staking and unstaking actions, detailing the success or failure of each action.
 
 ---
-
-Always ensure to have backups of your private keys and ensure you're operating in the desired environment. Mismanagement of stakes or private keys could lead to loss of POKT or functionality.

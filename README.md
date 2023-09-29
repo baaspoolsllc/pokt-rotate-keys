@@ -9,6 +9,7 @@ The POKT App Stake Rotator is a tool designed to simplify the process of rotatin
 - Node.js environment
 - A CSV file, `old-app-private-keys.csv`, containing old app private keys that you intend to unstake. This file should be located in the `input` directory.
 - A CSV file, `new-app-private-keys.csv`, containing new app private keys that you intend to stake. This file should also be located in the `input` directory.
+  - **Ensure that all your new public app stakes have at least 2 POKT**
 
 ### File Format
 

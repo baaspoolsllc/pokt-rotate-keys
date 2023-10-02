@@ -14,6 +14,7 @@ const rl = readline.createInterface({
 });
 
 const STAKE_BATCH_SIZE = 50;
+const PROPAGATE_SLEEP_MS = 15000;
 
 const oldAppPrivateKeysPath = Path.join(__dirname, "../input/old-app-private-keys.csv")
 const newAppPrivateKeysPath = Path.join(__dirname, "../input/new-app-private-keys.csv")
@@ -58,6 +59,9 @@ async function main() {
         throw new Error("Failed to stake all apps, try running the script again!")
 
     }
+
+    console.log("Sleeping for 15s to allow txs to propagate")
+    await sleep(PROPAGATE_SLEEP_MS)
 
     if(!await handleAppStakeAction('stake', newAppStakePrivateKeys)) {
         throw new Error("Failed to stake all apps, try running the script again!")
@@ -115,7 +119,7 @@ async function handleAppStakeAction(action: 'stake' | 'unstake', appPrivateKeys:
     for (const {address, response, success} of responses) {
         csvContent += `${address},${response},${success}\n`;
     }
-    const outputFileName = `${new Date().toISOString()}-${action}-results.csv`;
+    const outputFileName = `${new Date().toISOString().replace(/:/g,"_")}-${action}-results.csv`;
     const outputPath = Path.join(__dirname, "../", "output", outputFileName);
     fs.writeFileSync(outputPath, csvContent, 'utf-8');
     console.log(`Results saved to ${outputPath}`);
@@ -192,6 +196,15 @@ function getAppPrivateKeysFromCSV(filePath: string): string[] {
     }
 
     return receiverAddressesFile.slice(1);
+}
+
+/**
+ * Pauses the execution for a specified number of milliseconds.
+ * @param {number} ms - The number of milliseconds to pause for.
+ * @returns {Promise<void>} A promise that resolves after the specified number of milliseconds.
+ */
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 main().catch((error) => {

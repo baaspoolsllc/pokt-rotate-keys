@@ -5,7 +5,10 @@ import {JsonRpcProvider} from "@pokt-foundation/pocketjs-provider";
 
 import * as Path from "path";
 import {setPoktProvider} from "./di";
-import {appStakeRetry, appUnstakeRetry} from "./pokt/appStakeTxs";
+
+import {askQuestion} from "./common/ask_question";
+import {sendAppStakeTransfer} from "./pokt/appStakeTxs";
+import {KeyManager} from "@pokt-foundation/pocketjs-signer";
 
 
 const rl = readline.createInterface({
@@ -14,13 +17,12 @@ const rl = readline.createInterface({
 });
 
 const STAKE_BATCH_SIZE = 50;
-const PROPAGATE_SLEEP_MS = 15000;
 
 const oldAppPrivateKeysPath = Path.join(__dirname, "../input/old-app-private-keys.csv")
 const newAppPrivateKeysPath = Path.join(__dirname, "../input/new-app-private-keys.csv")
 
 async function main() {
-    const rpcProviderUrl = await askQuestion('Enter your POKT RPC Provider URL: ');
+    const rpcProviderUrl = await askQuestion(rl, 'Enter your POKT RPC Provider URL: ');
 
     const inputFiles = [oldAppPrivateKeysPath, newAppPrivateKeysPath]
     for (const f of inputFiles) {
@@ -30,21 +32,21 @@ async function main() {
         }
     }
 
-    const unstakePrivateKeys = getAppPrivateKeysFromCSV(oldAppPrivateKeysPath)
+    const oldAppStakePrivateKeys = getAppPrivateKeysFromCSV(oldAppPrivateKeysPath)
     const newAppStakePrivateKeys = getAppPrivateKeysFromCSV(newAppPrivateKeysPath)
 
-    if(unstakePrivateKeys.length != newAppStakePrivateKeys.length) {
-        throw new Error(`${unstakePrivateKeys} old app stakes does not match the replacement of ${newAppStakePrivateKeys} new app stakes`)
+    if (oldAppStakePrivateKeys.length != newAppStakePrivateKeys.length) {
+        throw new Error(`${oldAppStakePrivateKeys.length} old app stakes does not match the replacement of ${newAppStakePrivateKeys.length} new app stakes`)
     }
 
     console.log('')
-    console.log(`App stakes count being rotated: ${unstakePrivateKeys.length}`)
+    console.log(`App stakes count being rotated: ${oldAppStakePrivateKeys.length}`)
     console.log(`RPC Provider: ${rpcProviderUrl}`)
     console.log('')
 
-    const confirm = await askQuestion(`Does this seem correct? Confirm by typing yes: `)
+    const confirm = await askQuestion(rl, `Does this seem correct? Confirm by typing yes: `)
 
-    if(!["y", "yes"].includes(confirm)) {
+    if (!["y", "yes"].includes(confirm)) {
         throw new Error(`User confirmation failed, user answered with ${confirm}`)
     }
 
@@ -55,58 +57,54 @@ async function main() {
     }));
 
     // handle stakes
-    if(!await handleAppStakeAction('unstake', unstakePrivateKeys)) {
-        throw new Error("Failed to stake all apps, try running the script again!")
-
-    }
-
-    console.log("Sleeping for 15s to allow txs to propagate")
-    await sleep(PROPAGATE_SLEEP_MS)
-
-    if(!await handleAppStakeAction('stake', newAppStakePrivateKeys)) {
+    if (!await handleAppStakeTransfers(oldAppStakePrivateKeys, newAppStakePrivateKeys)) {
         throw new Error("Failed to stake all apps, try running the script again!")
     }
-
     console.log("App stakes successfully rotated")
     rl.close()
 }
 
 /**
- * Handles the staking or unstaking actions for given app private keys.
+ * Handles the app stake transfers
  * Processes the keys in batches and generates a CSV report of the results.
  *
- * @param {('stake' | 'unstake')} action - The action to perform, either 'stake' or 'unstake'.
- * @param {string[]} appPrivateKeys - Array of app private keys to process.
+ * @param {string[]} oldPrivateKeys - Array of app private keys to transfer from
+ * @param {string[]} newPrivateKeys - Array of app private keys to transfer to
  * @returns {Promise<boolean>} Returns true if all actions are successful, false otherwise.
  */
-async function handleAppStakeAction(action: 'stake' | 'unstake', appPrivateKeys: string[]) {
-    console.log(`Handling ${action}s`);
+async function handleAppStakeTransfers(oldPrivateKeys: string[], newPrivateKeys: string[]) {
 
     const responses: {
-        address: string,
+        oldAddress: string,
+        newAddress: string,
         response: string,
         success: boolean
     }[] = [];
 
-    const poktActionFuncWithRetry = action === 'stake' ? appStakeRetry : appUnstakeRetry;
 
-    for (let i = 0; i < appPrivateKeys.length; i += STAKE_BATCH_SIZE) {
-        const batch = appPrivateKeys.slice(i, i + STAKE_BATCH_SIZE);
-        const batchResults = await Promise.allSettled(batch.map(addr => poktActionFuncWithRetry(addr)));
+    for (let i = 0; i < oldPrivateKeys.length; i += STAKE_BATCH_SIZE) {
+        const oldAppStakeKeysBatch = oldPrivateKeys.slice(i, i + STAKE_BATCH_SIZE);
+        const newAppStakeKeysBatch = newPrivateKeys.slice(i, i + STAKE_BATCH_SIZE);
+
+        const batchResults = await Promise.allSettled(oldAppStakeKeysBatch.map((oldPrivateKey, i) => sendAppStakeTransfer(oldPrivateKey, newAppStakeKeysBatch[i])));
 
         for (let j = 0; j < batchResults.length; j++) {
             const result = batchResults[j];
+            const oldAddress =  (await KeyManager.fromPrivateKey(oldAppStakeKeysBatch[j])).getAddress()
+            const newAddress = (await KeyManager.fromPrivateKey(newAppStakeKeysBatch[j])).getAddress()
             if (result.status === 'fulfilled') {
                 const responseValue = (result as PromiseFulfilledResult<string>).value;
                 responses.push({
-                    address: batch[j],
+                    oldAddress,
+                    newAddress,
                     response: responseValue,
                     success: true,
                 });
             } else {
                 // promise rejected, likely from an exception
                 responses.push({
-                    address: batch[j],
+                    oldAddress,
+                    newAddress,
                     response: (result as PromiseRejectedResult).reason.toString(),
                     success: false
                 });
@@ -115,31 +113,16 @@ async function handleAppStakeAction(action: 'stake' | 'unstake', appPrivateKeys:
     }
 
     // Create the csv file for output
-    let csvContent = 'address,response,success\n';
-    for (const {address, response, success} of responses) {
-        csvContent += `${address},${response},${success}\n`;
+    let csvContent = 'oldAddress,newAddress,response,success\n';
+    for (const {oldAddress, newAddress, response, success} of responses) {
+        csvContent += `${oldAddress}-${newAddress}-${response},${success}\n`;
     }
-    const outputFileName = `${new Date().toISOString().replace(/:/g,"_")}-${action}-results.csv`;
+    const outputFileName = `${new Date().toISOString()}-app_transfer-results.csv`.replace(/:/g, "_");
     const outputPath = Path.join(__dirname, "../", "output", outputFileName);
     fs.writeFileSync(outputPath, csvContent, 'utf-8');
     console.log(`Results saved to ${outputPath}`);
 
-    return !responses.find(s=> !s.success)
-}
-
-
-/**
- * Prompts the user with a question and waits for the answer.
- *
- * @param {string} question - The question to ask.
- * @returns {Promise<string>} A promise that resolves to the user's answer.
- */
-function askQuestion(question: string): Promise<string> {
-    return new Promise((resolve) => {
-        rl.question(question, (answer) => {
-            resolve(answer);
-        });
-    });
+    return !responses.find(s => !s.success)
 }
 
 /**
@@ -174,7 +157,7 @@ function isValidCsv(privateKeys: string[]): boolean {
         console.error('Invalid addresses:', invalidAddresses);
         return false;
     }
-    if(privateKeys.slice(1).length > 100) {
+    if (privateKeys.slice(1).length > 100) {
         console.error('Avoid batch sending to more than 100 to, wait another 15 minutes and try another 100');
         return false;
     }
@@ -194,18 +177,9 @@ function getAppPrivateKeysFromCSV(filePath: string): string[] {
     if (!isValidCsv(receiverAddressesFile)) {
         throw new Error(`malformed CSV for app keys: ${filePath}`)
     }
-
-    return receiverAddressesFile.slice(1);
+    return receiverAddressesFile.slice(1).filter(s => s.length == 128);
 }
 
-/**
- * Pauses the execution for a specified number of milliseconds.
- * @param {number} ms - The number of milliseconds to pause for.
- * @returns {Promise<void>} A promise that resolves after the specified number of milliseconds.
- */
-function sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 main().catch((error) => {
     console.error('An error occurred:', error);

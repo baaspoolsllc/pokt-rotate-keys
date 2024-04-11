@@ -45,12 +45,23 @@ Ensure that the header is labeled "privateKey" and each subsequent row contains 
    export chainId="testnet"
    ```
 
-### Usage
-
-1. **Execution**: Simply run the following command in the root directory:
+### Generate New Private Keys Usage
+1. **Execution**:
 
    ```bash
-   npm start
+   npm run generate-new-keys
+   ```
+2. **Follow the prompts**:
+
+   - You will be prompted to enter how many new keys to generate
+   - The script will generate the new keys to the input folder with the output of: `new-app-private-keys-{date}.csv`
+
+### Rotate App Instructions
+
+1. **Execution**:
+
+   ```bash
+   npm run start
    ```
 
 2. **Follow the prompts**:
@@ -60,8 +71,12 @@ Ensure that the header is labeled "privateKey" and each subsequent row contains 
     - If everything is in order, you will receive a summary of the actions about to be performed and be asked for confirmation before proceeding.
     - If you confirm the actions, the tool will proceed to unstake old app stakes and stake new app stakes.
 
-3. **Check the Results**:
+3. **Verify the mesults manually**:
 
     - After the process is completed, you can check the results in the `output` directory. A CSV file will be generated for both the staking and unstaking actions, detailing the success or failure of each action.
 
+4. **Verify the results automatically**
+
+   - You can run `npm run verify-new-stakes.ts` to verify whether the app stakes in `new-app-private-keys.csv` are staked into the blockchain.
+   - This script allows you to quickly validate new application stakes in bulk without manually searching up the tx hashes.
 ---

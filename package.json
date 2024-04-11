@@ -14,7 +14,7 @@
     "build": "tsc",
     "start": "tsc && node dist/index.js",
     "generate-new-keys": "tsc && node dist/generate-keys.js",
-    "validate-new-stakes": "tsc && node dist/validate-new-stakes.js"
+    "verify-new-stakes": "tsc && node dist/verify-new-stakes.js"
   },
   "devDependencies": {
     "@types/node": "^20.2.5"

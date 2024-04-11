@@ -2,15 +2,16 @@ import { KeyManager } from "@pokt-foundation/pocketjs-signer";
 import { ChainID, TransactionBuilder } from "@pokt-foundation/pocketjs-transaction-builder";
 import { getPoktProvider } from "../di";
 
+
 /**
- * Tries to perform a specific app action (stake or unstake) with retries.
+ * Tries to perform a app transfer with retries
  *
- * @param {string} actionType - The action to perform: 'stake' or 'unstake'.
  * @param {string} appPrivateKey - The private key for the app.
+ * @param {string} newAppPrivateKey - new app private key if using app transfer
  * @param {number} [retryAttempts=10] - The number of times to retry the action if it fails.
  * @returns {Promise<string>} The transaction hash if successful, 'Failed' otherwise.
  */
-async function performAppActionRetry(actionType: 'stake' | 'unstake', appPrivateKey: string, retryAttempts = 10): Promise<string> {
+export async function sendAppStakeTransfer(appPrivateKey: string,  newAppPrivateKey: string, retryAttempts = 10): Promise<string> {
     const signer = await KeyManager.fromPrivateKey(appPrivateKey);
 
     const transactionBuilder = new TransactionBuilder({
@@ -19,20 +20,11 @@ async function performAppActionRetry(actionType: 'stake' | 'unstake', appPrivate
         chainID: process.env.chainId as ChainID || "mainnet"
     });
 
-    let actionMsg;
-    if (actionType === 'unstake') {
-        console.log("Attempting to unstake app: ", signer.getAddress());
-        actionMsg = transactionBuilder.appUnstake(signer.getAddress());
-    } else if (actionType === 'stake') {
-        console.log("Attempting to stake app: ", signer.getAddress());
-        actionMsg = transactionBuilder.appStake({
-            appPubKey: signer.getPublicKey(),
-            chains: ["0001"],
-            amount: "1000000"
-        });
-    } else {
-        throw new Error("Invalid action type provided.");
-    }
+    const transferAppKM = await KeyManager.fromPrivateKey(newAppPrivateKey)
+    console.log(`Attempting to transfer app: ${signer.getAddress()} to ${transferAppKM.getPublicKey()}`);
+    const actionMsg = transactionBuilder.appTransfer({
+        appPubKey: transferAppKM.getPublicKey(),
+    });
 
     let error: any;
     for (let i = 0; i < retryAttempts; i++) {
@@ -42,26 +34,7 @@ async function performAppActionRetry(actionType: 'stake' | 'unstake', appPrivate
         } catch (e) {
             error = e;
         }
+        throw Error(error);
     }
-    throw Error(error);
+    return ""
 }
-
-/**
- * Tries to unstake an app with retries.
- *
- * @param {string} appPrivateKey - The private key for the app.
- * @param {number} [retryAttempts=10] - The number of times to retry the action if it fails.
- * @returns {Promise<string>} The transaction hash if successful, 'Failed' otherwise.
- */
-export const appUnstakeRetry = (appPrivateKey: string, retryAttempts = 10): Promise<string> =>
-    performAppActionRetry('unstake', appPrivateKey, retryAttempts);
-
-/**
- * Tries to stake an app with retries.
- *
- * @param {string} appPrivateKey - The private key for the app.
- * @param {number} [retryAttempts=10] - The number of times to retry the action if it fails.
- * @returns {Promise<string>} The transaction hash if successful, 'Failed' otherwise.
- */
-export const appStakeRetry = (appPrivateKey: string, retryAttempts = 10): Promise<string> =>
-    performAppActionRetry('stake', appPrivateKey, retryAttempts);

@@ -4,11 +4,11 @@
   "main": "src/index.ts",
   "license": "MIT",
   "dependencies": {
-    "@pokt-foundation/pocketjs-provider": "^2.1.0",
-    "@pokt-foundation/pocketjs-relayer": "^2.1.0",
-    "@pokt-foundation/pocketjs-signer": "^2.1.0",
-    "@pokt-foundation/pocketjs-transaction-builder": "^2.1.0",
-    "@pokt-foundation/pocketjs-utils": "^2.1.0"
+    "@pokt-foundation/pocketjs-provider": "^2.2.1",
+    "@pokt-foundation/pocketjs-relayer": "^2.2.1",
+    "@pokt-foundation/pocketjs-signer": "^2.2.1",
+    "@pokt-foundation/pocketjs-transaction-builder": "^2.2.1",
+    "@pokt-foundation/pocketjs-utils": "^2.2.1"
   },
   "scripts": {
     "build": "tsc",

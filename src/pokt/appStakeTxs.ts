@@ -6,24 +6,24 @@ import { getPoktProvider } from "../di";
 /**
  * Tries to perform a app transfer with retries
  *
- * @param {string} appPrivateKey - The private key for the app.
- * @param {string} newAppPrivateKey - new app private key if using app transfer
+ * @param {string} oldAppPrivateKey - The private key for the old app key
+ * @param {string} newAppPrivateKey - The private key for the new app key being rotated.
  * @param {number} [retryAttempts=10] - The number of times to retry the action if it fails.
  * @returns {Promise<string>} The transaction hash if successful, 'Failed' otherwise.
  */
-export async function sendAppStakeTransfer(appPrivateKey: string,  newAppPrivateKey: string, retryAttempts = 10): Promise<string> {
-    const signer = await KeyManager.fromPrivateKey(appPrivateKey);
+export async function sendAppStakeTransfer(oldAppPrivateKey: string, newAppPrivateKey: string, retryAttempts = 10): Promise<string> {
+    const oldAppPrivateKeySigner = await KeyManager.fromPrivateKey(oldAppPrivateKey);
 
     const transactionBuilder = new TransactionBuilder({
         provider: getPoktProvider(),
-        signer,
+        signer: oldAppPrivateKeySigner,
         chainID: process.env.chainId as ChainID || "mainnet"
     });
 
-    const transferAppKM = await KeyManager.fromPrivateKey(newAppPrivateKey)
-    console.log(`Attempting to transfer app: ${signer.getAddress()} to ${transferAppKM.getPublicKey()}`);
+    const newAppPrivateKeySigner = await KeyManager.fromPrivateKey(newAppPrivateKey)
+    console.log(`Attempting to transfer app: ${oldAppPrivateKeySigner.getAddress()} to ${newAppPrivateKeySigner.getPublicKey()}`);
     const actionMsg = transactionBuilder.appTransfer({
-        appPubKey: transferAppKM.getPublicKey(),
+        appPubKey: newAppPrivateKeySigner.getPublicKey(),
     });
 
     let error: any;

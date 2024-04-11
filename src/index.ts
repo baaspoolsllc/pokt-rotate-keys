@@ -32,15 +32,15 @@ async function main() {
         }
     }
 
-    const unstakePrivateKeys = getAppPrivateKeysFromCSV(oldAppPrivateKeysPath)
+    const oldAppStakePrivateKeys = getAppPrivateKeysFromCSV(oldAppPrivateKeysPath)
     const newAppStakePrivateKeys = getAppPrivateKeysFromCSV(newAppPrivateKeysPath)
 
-    if (unstakePrivateKeys.length != newAppStakePrivateKeys.length) {
-        throw new Error(`${unstakePrivateKeys.length} old app stakes does not match the replacement of ${newAppStakePrivateKeys.length} new app stakes`)
+    if (oldAppStakePrivateKeys.length != newAppStakePrivateKeys.length) {
+        throw new Error(`${oldAppStakePrivateKeys.length} old app stakes does not match the replacement of ${newAppStakePrivateKeys.length} new app stakes`)
     }
 
     console.log('')
-    console.log(`App stakes count being rotated: ${unstakePrivateKeys.length}`)
+    console.log(`App stakes count being rotated: ${oldAppStakePrivateKeys.length}`)
     console.log(`RPC Provider: ${rpcProviderUrl}`)
     console.log('')
 
@@ -57,7 +57,7 @@ async function main() {
     }));
 
     // handle stakes
-    if (!await handleAppStakeTransfers(unstakePrivateKeys, unstakePrivateKeys)) {
+    if (!await handleAppStakeTransfers(oldAppStakePrivateKeys, newAppStakePrivateKeys)) {
         throw new Error("Failed to stake all apps, try running the script again!")
     }
     console.log("App stakes successfully rotated")
@@ -84,9 +84,9 @@ async function handleAppStakeTransfers(oldPrivateKeys: string[], newPrivateKeys:
 
     for (let i = 0; i < oldPrivateKeys.length; i += STAKE_BATCH_SIZE) {
         const oldAppStakeKeysBatch = oldPrivateKeys.slice(i, i + STAKE_BATCH_SIZE);
-        const newAppStakeKeysBatch = newAppPrivateKeysPath.slice(i, i + STAKE_BATCH_SIZE);
+        const newAppStakeKeysBatch = newPrivateKeys.slice(i, i + STAKE_BATCH_SIZE);
 
-        const batchResults = await Promise.allSettled(oldAppStakeKeysBatch.map((addr, i) => sendAppStakeTransfer(addr, newAppStakeKeysBatch[i])));
+        const batchResults = await Promise.allSettled(oldAppStakeKeysBatch.map((oldPrivateKey, i) => sendAppStakeTransfer(oldPrivateKey, newAppStakeKeysBatch[i])));
 
         for (let j = 0; j < batchResults.length; j++) {
             const result = batchResults[j];

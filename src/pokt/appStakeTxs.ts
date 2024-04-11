@@ -21,7 +21,7 @@ export async function sendAppStakeTransfer(oldAppPrivateKey: string, newAppPriva
     });
 
     const newAppPrivateKeySigner = await KeyManager.fromPrivateKey(newAppPrivateKey)
-    console.log(`Attempting to transfer app: ${oldAppPrivateKeySigner.getAddress()} to ${newAppPrivateKeySigner.getPublicKey()}`);
+    console.log(`Attempting to transfer app: ${oldAppPrivateKeySigner.getAddress()} to ${newAppPrivateKeySigner.getAddress()}`);
     const actionMsg = transactionBuilder.appTransfer({
         appPubKey: newAppPrivateKeySigner.getPublicKey(),
     });

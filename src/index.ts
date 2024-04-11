@@ -115,7 +115,7 @@ async function handleAppStakeTransfers(oldPrivateKeys: string[], newPrivateKeys:
     // Create the csv file for output
     let csvContent = 'oldAddress,newAddress,response,success\n';
     for (const {oldAddress, newAddress, response, success} of responses) {
-        csvContent += `${oldAddress}-${newAddress}-${response},${success}\n`;
+        csvContent += `${oldAddress},${newAddress},${response},${success}\n`;
     }
     const outputFileName = `${new Date().toISOString()}-app_transfer-results.csv`.replace(/:/g, "_");
     const outputPath = Path.join(__dirname, "../", "output", outputFileName);

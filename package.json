@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsc",
     "start": "tsc && node dist/index.js",
-    "generate-new-keys": "tsc && node dist/generate-keys.js"
+    "generate-new-keys": "tsc && node dist/generate-keys.js",
+    "validate-new-stakes": "tsc && node dist/validate-new-stakes.js"
   },
   "devDependencies": {
     "@types/node": "^20.2.5"

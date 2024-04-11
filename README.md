@@ -50,7 +50,7 @@ Ensure that the header is labeled "privateKey" and each subsequent row contains 
 1. **Execution**: Simply run the following command in the root directory:
 
    ```bash
-   node index.js
+   npm start
    ```
 
 2. **Follow the prompts**:

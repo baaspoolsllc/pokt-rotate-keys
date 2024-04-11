@@ -8,6 +8,7 @@ import {setPoktProvider} from "./di";
 
 import {askQuestion} from "./common/ask_question";
 import {sendAppStakeTransfer} from "./pokt/appStakeTxs";
+import {KeyManager} from "@pokt-foundation/pocketjs-signer";
 
 
 const rl = readline.createInterface({
@@ -74,6 +75,8 @@ async function main() {
 async function handleAppStakeTransfers(oldPrivateKeys: string[], newPrivateKeys: string[]) {
 
     const responses: {
+        oldAddress: string,
+        newAddress: string,
         response: string,
         success: boolean
     }[] = [];
@@ -87,15 +90,21 @@ async function handleAppStakeTransfers(oldPrivateKeys: string[], newPrivateKeys:
 
         for (let j = 0; j < batchResults.length; j++) {
             const result = batchResults[j];
+            const oldAddress =  (await KeyManager.fromPrivateKey(oldAppStakeKeysBatch[j])).getAddress()
+            const newAddress = (await KeyManager.fromPrivateKey(newAppStakeKeysBatch[j])).getAddress()
             if (result.status === 'fulfilled') {
                 const responseValue = (result as PromiseFulfilledResult<string>).value;
                 responses.push({
+                    oldAddress,
+                    newAddress,
                     response: responseValue,
                     success: true,
                 });
             } else {
                 // promise rejected, likely from an exception
                 responses.push({
+                    oldAddress,
+                    newAddress,
                     response: (result as PromiseRejectedResult).reason.toString(),
                     success: false
                 });
@@ -104,9 +113,9 @@ async function handleAppStakeTransfers(oldPrivateKeys: string[], newPrivateKeys:
     }
 
     // Create the csv file for output
-    let csvContent = 'address,response,success\n';
-    for (const {response, success} of responses) {
-        csvContent += `${response},${success}\n`;
+    let csvContent = 'oldAddress,newAddress,response,success\n';
+    for (const {oldAddress, newAddress, response, success} of responses) {
+        csvContent += `${oldAddress}-${newAddress}-${response},${success}\n`;
     }
     const outputFileName = `${new Date().toISOString()}-app_transfer-results.csv`.replace(/:/g, "_");
     const outputPath = Path.join(__dirname, "../", "output", outputFileName);

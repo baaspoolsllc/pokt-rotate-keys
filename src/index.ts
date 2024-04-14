@@ -76,7 +76,9 @@ async function handleAppStakeTransfers(oldPrivateKeys: string[], newPrivateKeys:
 
     const responses: {
         oldAddress: string,
+        oldPublicKey: string,
         newAddress: string,
+        newPublicKey: string,
         response: string,
         success: boolean
     }[] = [];
@@ -90,21 +92,25 @@ async function handleAppStakeTransfers(oldPrivateKeys: string[], newPrivateKeys:
 
         for (let j = 0; j < batchResults.length; j++) {
             const result = batchResults[j];
-            const oldAddress =  (await KeyManager.fromPrivateKey(oldAppStakeKeysBatch[j])).getAddress()
-            const newAddress = (await KeyManager.fromPrivateKey(newAppStakeKeysBatch[j])).getAddress()
+            const oldKm = await KeyManager.fromPrivateKey(oldAppStakeKeysBatch[j])
+            const newKm = await KeyManager.fromPrivateKey(newAppStakeKeysBatch[j])
             if (result.status === 'fulfilled') {
                 const responseValue = (result as PromiseFulfilledResult<string>).value;
                 responses.push({
-                    oldAddress,
-                    newAddress,
+                    oldAddress: oldKm.getAddress(),
+                    oldPublicKey: oldKm.getPublicKey(),
+                    newAddress: newKm.getAddress(),
+                    newPublicKey: newKm.getPublicKey(),
                     response: responseValue,
                     success: true,
                 });
             } else {
                 // promise rejected, likely from an exception
                 responses.push({
-                    oldAddress,
-                    newAddress,
+                    oldAddress: oldKm.getAddress(),
+                    oldPublicKey: oldKm.getPublicKey(),
+                    newAddress: newKm.getAddress(),
+                    newPublicKey: newKm.getPublicKey(),
                     response: (result as PromiseRejectedResult).reason.toString(),
                     success: false
                 });
@@ -113,9 +119,9 @@ async function handleAppStakeTransfers(oldPrivateKeys: string[], newPrivateKeys:
     }
 
     // Create the csv file for output
-    let csvContent = 'oldAddress,newAddress,response,success\n';
-    for (const {oldAddress, newAddress, response, success} of responses) {
-        csvContent += `${oldAddress},${newAddress},${response},${success}\n`;
+    let csvContent = 'oldAddress,oldPublicKey,newAddress,newPublicKey,response,success\n';
+    for (const {oldAddress, oldPublicKey, newAddress, newPublicKey, response, success} of responses) {
+        csvContent += `${oldAddress},${oldPublicKey},${newAddress},${newPublicKey},${response},${success}\n`;
     }
     const outputFileName = `${new Date().toISOString()}-app_transfer-results.csv`.replace(/:/g, "_");
     const outputPath = Path.join(__dirname, "../", "output", outputFileName);

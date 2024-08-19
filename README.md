@@ -79,4 +79,6 @@ Ensure that the header is labeled "privateKey" and each subsequent row contains 
 
    - You can run `npm run verify-new-stakes.ts` to verify whether the app stakes in `new-app-private-keys.csv` are staked into the blockchain.
    - This script allows you to quickly validate new application stakes in bulk without manually searching up the tx hashes.
+  
+_Transfer your old app stake wallet balances to your new app stakes. Rotating app stakes via network transaction does not transfer funds, you should do that manually._
 ---
